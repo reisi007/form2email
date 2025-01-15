@@ -16,3 +16,12 @@ Have fun
 
 ## Compatibility
 PHP: 8.3
+
+## Minimal Example
+
+````html
+<form method="post" action="url/to/script">
+    <input type="email" name="email" required/> <!-- required, as needed -->
+    <input type="hidden" name="honeypot" value="your_configured_value"/> <!-- required, will not be sent per mail -->
+</form>
+````

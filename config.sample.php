@@ -7,5 +7,6 @@ if (!defined('ACCESS')) {
 return [
     'receiver_email' => 'your-email@example.com',
     'redirect_url' => 'thankyou.html',
-    'email_subject' => 'New Form Submission'
+    'email_subject' => 'New Form Submission',
+    'honeypot_value' => 'secret_key'
 ];

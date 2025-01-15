@@ -6,6 +6,12 @@ define('ACCESS', true);
 $config = include('config.php');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Validate honeypot field
+    if (!isset($_POST['honeypot']) || $_POST['honeypot'] !== $config['honeypot_value']) {
+        http_response_code(403);
+        exit('Forbidden');
+    }
+
     // Validate mandatory email field
     if (empty($_POST['email']) || !filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
         http_response_code(400);
@@ -13,8 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $userEmail = $_POST['email'];
+
+    // Build email message (exclude honeypot)
     $message = '';
     foreach ($_POST as $key => $value) {
+        if ($key === 'honeypot') {
+            continue; // Skip honeypot
+        }
         $message .= ucfirst($key) . ": " . htmlspecialchars($value) . "\n";
     }
 
