@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Prepare and send email
     $headers = [
-        'From' => 'no-reply@example.com',
+        'From' => $config['receiver_email'],
         'Reply-To' => $userEmail
     ];
 
