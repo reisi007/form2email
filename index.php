@@ -12,6 +12,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit('Forbidden');
     }
 
+    // Check for disallowed keys (starting with "_")
+    foreach ($_POST as $key => $value) {
+        if (str_starts_with($key, '_')) {
+            http_response_code(400);
+            exit('Invalid form data.');
+        }
+    }
+
     // Validate mandatory email field
     if (empty($_POST['email']) || !filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
         http_response_code(400);
@@ -26,7 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($key === 'honeypot') {
             continue; // Skip honeypot
         }
-        $message .= ucfirst($key) . ": " . htmlspecialchars($value) . "\n";
+        // Separate key and value with a line break
+        $message .= ucfirst($key) . ":\n" . htmlspecialchars($value) . "\n\n";
     }
 
     // Prepare and send email
