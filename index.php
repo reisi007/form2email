@@ -5,6 +5,17 @@ define('ACCESS', true);
 // Include configuration
 $config = include('config.php');
 
+// Function to check if all fields are in the whitelist (case-insensitive)
+function areFieldsWhitelisted($fields, $whitelist) {
+    $lowercaseWhitelist = array_map('strtolower', $whitelist);
+    foreach (array_keys($fields) as $field) {
+        if (!in_array(strtolower($field), $lowercaseWhitelist)) {
+            return false; // If a field is not in the whitelist, return false
+        }
+    }
+    return true;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate honeypot field
     if (!isset($_POST['honeypot']) || $_POST['honeypot'] !== $config['honeypot_value']) {
@@ -12,12 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit('Forbidden');
     }
 
-    // Check for disallowed keys (starting with "_")
-    foreach ($_POST as $key => $value) {
-        if (str_starts_with($key, '_')) {
-            http_response_code(400);
-            exit('Invalid form data.');
-        }
+    // Check if all fields are in the whitelist
+    if (!areFieldsWhitelisted($_POST, $config['whitelist'])) {
+        http_response_code(400);
+        exit('Invalid form fields.');
     }
 
     // Validate mandatory email field
@@ -28,19 +37,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $userEmail = $_POST['email'];
 
-    // Build email message (exclude honeypot)
+    // Build email message using only allowed fields
     $message = '';
     foreach ($_POST as $key => $value) {
         if ($key === 'honeypot') {
-            continue; // Skip honeypot
+            continue; // Skip honeypot in the email body
         }
-        // Separate key and value with a line break
         $message .= ucfirst($key) . ":\n" . htmlspecialchars($value) . "\n\n";
     }
 
     // Prepare and send email
     $headers = [
-        'From' => $config['receiver_email'],
+        'From' => $config['receiver_email'], // Use the receiver_email from config
         'Reply-To' => $userEmail
     ];
 
