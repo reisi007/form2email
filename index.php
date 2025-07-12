@@ -40,8 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Build email message using only allowed fields
     $message = '';
     foreach ($_POST as $key => $value) {
-        if ($key === 'honeypot') {
-            continue; // Skip honeypot in the email body
+        if ($key === 'honeypot' || $key === 'subject_prefix') {
+            continue; // Skip honeypot and subject_prefix in the email body
         }
         $message .= ucfirst($key) . ":\n" . htmlspecialchars($value) . "\n\n";
     }
@@ -52,9 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'Reply-To' => $userEmail
     ];
 
+    $emailSubject = $config['email_subject'];
+    if (!empty($_POST['subject_prefix'])) {
+        $emailSubject = '[' . $_POST['subject_prefix'] . '] ' . $emailSubject;
+    }
+
     $success = mail(
         $config['receiver_email'],
-        $config['email_subject'],
+        $emailSubject,
         $message,
         $headers
     );
