@@ -2,15 +2,23 @@
 // Define constant to allow config access
 define('ACCESS', true);
 
-// Include configuration
+// Include configuration and mailer
 $config = include('config.php');
+require_once('mailer.php'); // Include the mailer dispatcher
 
-// Function to check if all fields are in the whitelist (case-insensitive)
-function areFieldsWhitelisted($fields, $whitelist) {
+/**
+ * Checks if all provided fields are in a whitelist (case-insensitive).
+ *
+ * @param array $fields The array of fields to check (e.g., $_POST).
+ * @param array $whitelist The array of allowed field names.
+ * @return bool True if all fields are whitelisted, false otherwise.
+ */
+function areFieldsWhitelisted(array $fields, array $whitelist): bool
+{
     $lowercaseWhitelist = array_map('strtolower', $whitelist);
     foreach (array_keys($fields) as $field) {
         if (!in_array(strtolower($field), $lowercaseWhitelist)) {
-            return false; // If a field is not in the whitelist, return false
+            return false;
         }
     }
     return true;
@@ -40,28 +48,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Build email message using only allowed fields
     $message = '';
     foreach ($_POST as $key => $value) {
-        if ($key === 'honeypot' || $key === 'subject_prefix') {
-            continue; // Skip honeypot and subject_prefix in the email body
+        // Skip special fields and any fields with an empty value
+        if ($key === 'honeypot' || $key === 'subject_prefix' || trim((string) $value) === '') {
+            continue;
         }
         $message .= ucfirst($key) . ":\n" . htmlspecialchars($value) . "\n\n";
     }
 
-    // Prepare and send email
-    $headers = [
-        'From' => $config['receiver_email'], // Use the receiver_email from config
-        'Reply-To' => $userEmail
-    ];
-
+    // Prepare email subject
     $emailSubject = $config['email_subject'];
     if (!empty($_POST['subject_prefix'])) {
-        $emailSubject = '[' . $_POST['subject_prefix'] . '] ' . $emailSubject;
+        $emailSubject = '[' . htmlspecialchars($_POST['subject_prefix']) . '] ' . $emailSubject;
     }
 
-    $success = mail(
-        $config['receiver_email'],
+    // Send email using the new mailer function
+    $success = send_email(
+        $config,
         $emailSubject,
         $message,
-        $headers
+        $userEmail
     );
 
     if ($success) {
