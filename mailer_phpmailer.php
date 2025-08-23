@@ -60,9 +60,9 @@ function send_email_phpmailer(array $config, string $subject, string $message, s
         $mail->addReplyTo($replyToEmail);
 
         // Content
-        $mail->isHTML(false); // Set to true if you want to send HTML email
+        $mail->isHTML(true); // Set to true if you want to send HTML email
         $mail->Subject = $subject;
-        $mail->Body    = $message;
+        $mail->Body    = '<div style="white-space: pre-wrap;">' . $message . '</div>';
         $mail->AltBody = $message; // For non-HTML mail clients
 
         $mail->send();

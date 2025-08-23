@@ -54,18 +54,13 @@ These are only required if `mailer_type` is set to `'phpmailer'`.
 -   `password`: Your SMTP password (if using `'password'` auth).
 -   `oauth`: Your Google API credentials (if using `'oauth2'` auth).
 
-### Generating a Google OAuth Refresh Token (for `auth_type = 'oauth2'`)
+### Generating a (Google) OAuth Refresh Token (for `auth_type = 'oauth2'`)
 
-If you choose to use Google OAuth2, you need to generate a `refreshToken`. A helper script, `get_oauth_token.php`, is provided for this one-time task.
+If you choose to use Google OAuth2, you need to generate a `refreshToken`. A helper script, `/vendor/phpmailer/phpmailer/get_oauth_token.php`, is provided by PHPMailer for this one-time task.
 
-1.  Follow the instructions at the top of the `get_oauth_token.php` file to get your `Client ID` and `Client Secret` from the Google Cloud Console. You must add the URL to the script as an "Authorized redirect URI".
-2.  Fill in your credentials in `get_oauth_token.php`.
-3.  Upload the script to your server.
-4.  Run the script by visiting its URL in your browser.
-5.  Grant access to your Google account.
-6.  The script will display a `refreshToken`. Copy this value.
-7.  Paste the token into the `refreshToken` field in your `config.php` file.
-8.  **CRITICAL: Delete `get_oauth_token.php` from your server immediately.**
+1.  Copy the file to the root directory
+2.  Follow the instruction on https://github.com/PHPMailer/PHPMailer/wiki/Using-Gmail-with-XOAUTH2 (or the specific instruction for your email provider)
+3.  **CRITICAL: Delete `get_oauth_token.php` from your server immediately afterwards.**
 
 ## HTML Form Example
 
