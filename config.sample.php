@@ -12,7 +12,7 @@ return [
     'honeypot_value' => 'a-unique-and-secret-value',
     // Case-insensitive whitelist of allowed form fields.
     // 'email' and 'honeypot' are required. 'subject_prefix' is optional.
-    'whitelist' => ['email', 'name', 'message', 'honeypot', 'subject_prefix'],
+    'whitelist' => ['email', 'name', 'message', 'honeypot', 'subject', 'subject_prefix'],
 
     // --- Mailer Settings ---
     // Choose your mailer: 'native' or 'phpmailer'.

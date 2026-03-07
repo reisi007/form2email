@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $message = '';
     foreach ($_POST as $key => $value) {
         // Skip special fields and any fields with an empty value
-        if ($key === 'honeypot' || $key === 'subject_prefix' || trim((string) $value) === '') {
+        if ($key === 'honeypot' || $key === 'subject' || $key === 'subject_prefix' || trim((string) $value) === '') {
             continue;
         }
         $message .= ucfirst($key) . ":\n" . htmlspecialchars($value) . "\n\n";
@@ -57,6 +57,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Prepare email subject
     $emailSubject = $config['email_subject'];
+
+    if (!empty($_POST['subject'])) {
+        $emailSubject = htmlspecialchars($_POST['subject']);
+    }
+
     if (!empty($_POST['subject_prefix'])) {
         $emailSubject = '[' . htmlspecialchars($_POST['subject_prefix']) . '] ' . $emailSubject;
     }
