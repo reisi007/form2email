@@ -1,6 +1,7 @@
 <?php
 // Define constant to allow config access
 define('ACCESS', true);
+ini_set('display_errors', '0');
 
 // Include configuration and mailer
 $config = include('config.php');
