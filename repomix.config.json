@@ -1,0 +1,16 @@
+{
+    "output": {
+        "style": "markdown",
+        "filePath": "repomix-form2email.md",
+        "removeComments": false,
+        "removeEmptyLines": false,
+        "showLineNumbers": false,
+        "fileSummary": true,
+        "directoryStructure": true
+    },
+    "ignore": {
+        "useGitignore": true,
+        "useDefaultPatterns": true,
+        "customPatterns": []
+    }
+}
