@@ -75,10 +75,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userEmail
     );
 
+    // --- MAKE.COM WEBHOOK FALLBACK LOGIC ---
     if ($success) {
         header("Location: " . $config['redirect_url']);
         exit;
     } else {
+        // Read the Make.com Webhook URL and API Key from the Docker environment
+        $webhookUrl = getenv('MAKE_WEBHOOK_URL');
+        $makeApiKey = getenv('MAKE_API_KEY');
+
+        if ($webhookUrl && $makeApiKey) {
+            // Include the error, the formatted message, and the raw POST data as a fallback
+            $payload = json_encode([
+                'error' => 'Live Code Error: The form on form.reisinger.pictures failed to send an email via SMTP!',
+                'formatted_message' => $message,
+                'form_data' => $_POST
+            ]);
+
+            $options = [
+                'http' => [
+                    'method' => 'POST',
+                    'header' => "Content-Type: application/json\r\n" .
+                        "x-make-apikey: " . $makeApiKey . "\r\n",
+                    'content' => $payload,
+                    'ignore_errors' => true // Prevent PHP warnings if Make.com is unreachable
+                ]
+            ];
+            $context = stream_context_create($options);
+            file_get_contents($webhookUrl, false, $context);
+        }
+
         http_response_code(500);
         exit('Failed to send email.');
     }
