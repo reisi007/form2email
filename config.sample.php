@@ -14,6 +14,36 @@ return [
     // 'email' and 'honeypot' are required. 'subject_prefix' is optional.
     'whitelist' => ['email', 'name', 'message', 'honeypot', 'subject', 'subject_prefix'],
 
+    // --- CORS & Domain Routing Settings ---
+    // List of allowed origins for CORS headers
+    'allowed_origins' => [
+        'https://reisinger.pictures',
+        'https://all-the.rest'
+    ],
+
+    // Dynamic profiles based on the HTTP_ORIGIN
+    // This allows routing to different sender aliases, receiving addresses, and redirect URLs
+    'domain_profiles' => [
+        'https://reisinger.pictures' => [
+            'from_email' => 'b2c@reisinger.pictures',
+            'from_name' => 'Reisinger Pictures (B2C)',
+            'receiver_email' => 'b2c-inquiries@reisinger.pictures',
+            'redirect_url' => 'https://reisinger.pictures/danke.html'
+        ],
+        'https://all-the.rest' => [
+            'from_email' => 'b2b@all-the.rest',
+            'from_name' => 'All-The Rest (B2B)',
+            'receiver_email' => 'b2b-leads@all-the.rest',
+            'redirect_url' => 'https://all-the.rest/thankyou.html'
+        ],
+        // Fallback profile if origin is not matching or direct access
+        'default' => [
+            'from_email' => 'no-reply@reisinger.pictures',
+            'from_name' => 'General Website Form',
+            'redirect_url' => 'https://reisinger.pictures/thankyou.html'
+        ]
+    ],
+
     // --- Mailer Settings ---
     // Choose your mailer: 'native' or 'phpmailer'.
     // 'native' uses the built-in PHP mail() function. It requires no further config but is often unreliable.

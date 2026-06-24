@@ -7,6 +7,22 @@ ini_set('display_errors', '0');
 $config = include('config.php');
 require_once('mailer.php'); // Include the mailer dispatcher
 
+// --- CORS & ORIGIN HANDLING ---
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$isAllowedOrigin = in_array($origin, $config['allowed_origins'] ?? []);
+
+if ($isAllowedOrigin) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Access-Control-Allow-Methods: POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type');
+}
+
+// Handle preflight requests gracefully
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
 /**
  * Checks if all provided fields are in a whitelist (case-insensitive).
  *
@@ -65,6 +81,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!empty($_POST['subject_prefix'])) {
         $emailSubject = '[' . htmlspecialchars($_POST['subject_prefix']) . '] ' . $emailSubject;
+    }
+
+    // --- DYNAMIC PROFILE ROUTING ---
+    // Apply the correct sender (and optionally receiver / redirect) based on the HTTP_ORIGIN
+    $domainProfiles = $config['domain_profiles'] ?? [];
+    $activeProfile = $domainProfiles[$origin] ?? $domainProfiles['default'];
+
+    // Inject dynamic sender into mailer options
+    $config['mailer_options']['from_email'] = $activeProfile['from_email'];
+    $config['mailer_options']['from_name'] = $activeProfile['from_name'];
+
+    // Override receiver email if specific to the domain profile
+    if (!empty($activeProfile['receiver_email'])) {
+        $config['receiver_email'] = $activeProfile['receiver_email'];
+    }
+
+    // Override redirect URL if specific to the domain profile
+    if (!empty($activeProfile['redirect_url'])) {
+        $config['redirect_url'] = $activeProfile['redirect_url'];
     }
 
     // Send email using the new mailer function
