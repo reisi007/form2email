@@ -41,6 +41,35 @@ function areFieldsWhitelisted(array $fields, array $whitelist): bool
     return true;
 }
 
+/**
+ * Safely extracts and normalizes the origin from a given URL to prevent open redirect vulnerabilities.
+ * It strictly filters against protocol-relative paths and malformed slash combinations.
+ *
+ * @param string $url The URL to parse and validate.
+ * @return string The normalized origin (scheme://host[:port]) or an empty string if invalid.
+ */
+function getOriginFromUrl(string $url): string
+{
+    // Block protocol-relative URLs (e.g., //attacker.com) and backslashes to prevent parser bypasses
+    if (str_starts_with($url, '//') || str_contains($url, '\\')) {
+        return '';
+    }
+
+    $parsed = parse_url($url);
+    if (!$parsed || empty($parsed['host']) || empty($parsed['scheme'])) {
+        return '';
+    }
+
+    // Enforce web-safe protocols only
+    $scheme = strtolower($parsed['scheme']);
+    if (!in_array($scheme, ['http', 'https'], true)) {
+        return '';
+    }
+
+    $port = isset($parsed['port']) ? ':' . $parsed['port'] : '';
+    return $scheme . '://' . strtolower($parsed['host']) . $port;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate honeypot field
     if (!isset($_POST['honeypot']) || $_POST['honeypot'] !== $config['honeypot_value']) {
@@ -66,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $message = '';
     foreach ($_POST as $key => $value) {
         // Skip special fields and any fields with an empty value
-        if ($key === 'honeypot' || $key === 'subject' || $key === 'subject_prefix' || trim((string) $value) === '') {
+        if ($key === 'honeypot' || $key === 'subject' || $key === 'subject_prefix' || $key === "_next" || trim((string)$value) === '') {
             continue;
         }
         $message .= ucfirst($key) . ":\n" . htmlspecialchars($value) . "\n\n";
@@ -97,9 +126,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $config['receiver_email'] = $activeProfile['receiver_email'];
     }
 
-    // Override redirect URL if specific to the domain profile
+    // Override redirect URL if specific to the domain profile, fallback to default profile redirect
     if (!empty($activeProfile['redirect_url'])) {
         $config['redirect_url'] = $activeProfile['redirect_url'];
+    } else {
+        $config['redirect_url'] = $domainProfiles['default']['redirect_url'] ?? '';
+    }
+
+    // Fail-safe protection if no redirect URL is defined anywhere in the configuration
+    if (empty($config['redirect_url'])) {
+        http_response_code(500);
+        exit('Server Configuration Error: Missing redirect URL.');
+    }
+
+    // Determine the allowed origin for this specific request profile to enforce strict same-origin redirects
+    $currentProfileOrigin = '';
+    if (array_key_exists($origin, $domainProfiles)) {
+        $currentProfileOrigin = $origin;
+    } else {
+        // Fallback: extract the origin from the default profile's redirect URL
+        $currentProfileOrigin = getOriginFromUrl($config['redirect_url']);
+    }
+
+    // Frontend override for the redirect (strictly validated using the helper function against the active profile's origin)
+    if (!empty($_POST['_next']) && filter_var($_POST['_next'], FILTER_VALIDATE_URL)) {
+        $nextOrigin = getOriginFromUrl($_POST['_next']);
+
+        if (!empty($currentProfileOrigin) && $nextOrigin === $currentProfileOrigin) {
+            $config['redirect_url'] = $_POST['_next'];
+        }
     }
 
     // Send email using the new mailer function
