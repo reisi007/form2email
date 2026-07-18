@@ -4,7 +4,8 @@ if (!defined('ACCESS')) {
     die('Direct access not permitted.');
 }
 
-// Include Composer's autoloader
+// Include Composer's autoloader (also pulls in the shared helpers in
+// src/functions.php, e.g., resolveMailerSecret()).
 require_once __DIR__ . '/vendor/autoload.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
@@ -15,9 +16,9 @@ use League\OAuth2\Client\Provider\Google;
 /**
  * Sends an email using PHPMailer with SMTP (Password or XOAUTH2).
  *
- * @param array $config The application configuration array.
- * @param string $subject The email subject.
- * @param string $message The email body.
+ * @param array  $config       The application configuration array.
+ * @param string $subject      The email subject.
+ * @param string $message      The email body.
  * @param string $replyToEmail The email address for the Reply-To header.
  * @return bool True on success, false on failure.
  */
@@ -35,23 +36,32 @@ function send_email_phpmailer(array $config, string $subject, string $message, s
         $mail->Port       = $mailerConfig['port'];
         $mail->SMTPSecure = $mailerConfig['encryption'] === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
 
-        // Authentication logic
+        // Authentication logic.
+        // Both auth_type paths support being sourced from the environment (AGENTS.md §2).
+        // The active strategy is selected via $mailerConfig['auth_type'] in config.php
+        // ('password' for SMTP/Basic Auth, 'oauth2' for Google XOAUTH2).
         if ($mailerConfig['auth_type'] === 'oauth2') {
             $mail->AuthType = 'XOAUTH2';
+            $oauthConfig    = $mailerConfig['oauth'] ?? [];
+            $clientId       = resolveMailerSecret($oauthConfig, 'clientId', 'OAUTH_CLIENT_ID');
+            $clientSecret   = resolveMailerSecret($oauthConfig, 'clientSecret', 'OAUTH_CLIENT_SECRET');
+            $refreshToken   = resolveMailerSecret($oauthConfig, 'refreshToken', 'OAUTH_REFRESH_TOKEN');
+
             $provider = new Google([
-                'clientId'     => $mailerConfig['oauth']['clientId'],
-                'clientSecret' => $mailerConfig['oauth']['clientSecret'],
+                'clientId'     => $clientId,
+                'clientSecret' => $clientSecret,
             ]);
             $mail->setOAuth(new OAuth([
                 'provider'     => $provider,
-                'clientId'     => $mailerConfig['oauth']['clientId'],
-                'clientSecret' => $mailerConfig['oauth']['clientSecret'],
-                'refreshToken' => $mailerConfig['oauth']['refreshToken'],
+                'clientId'     => $clientId,
+                'clientSecret' => $clientSecret,
+                'refreshToken' => $refreshToken,
                 'userName'     => $mailerConfig['username'],
             ]));
         } else { // Default to 'password'
-            $mail->Username   = $mailerConfig['username'];
-            $mail->Password   = $mailerConfig['password'];
+            $mail->Username = $mailerConfig['username'];
+            // Prefer an explicit config value, otherwise fall back to the SMTP_PASSWORD env var.
+            $mail->Password = resolveMailerSecret($mailerConfig, 'password', 'SMTP_PASSWORD');
         }
 
         // Recipients
@@ -67,8 +77,10 @@ function send_email_phpmailer(array $config, string $subject, string $message, s
 
         $mail->send();
         return true;
-    } catch (Exception $e) {
-        // Log the error for debugging purposes
+    } catch (\Exception $e) {
+        // Log the error for debugging purposes. Catching the global \Exception
+        // also covers PHPMailer\PHPMailer\Exception (which extends \Exception),
+        // so the Make.com webhook fallback in index.php (AGENTS.md §3) still fires.
         error_log("Message could not be sent. Mailer Error: {$mail->ErrorInfo}");
         return false;
     }

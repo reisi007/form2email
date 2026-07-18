@@ -20,15 +20,26 @@ services:
       exec apache2-foreground
       '
     environment:
+      # --- Required by the Make.com failure fallback (see AGENTS.md §3) ---
       - MAKE_WEBHOOK_URL=${MAKE_WEBHOOK_URL}
       - MAKE_API_KEY=${MAKE_API_KEY}
+      # --- Google OAuth2 credentials (required only when auth_type=oauth2) ---
       - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
       - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
       - OAUTH_REFRESH_TOKEN=${OAUTH_REFRESH_TOKEN}
+      # --- SMTP/Basic Auth credentials (required only when auth_type=password) ---
+      # The active strategy is selected via mailer_options.auth_type in config.php.
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_HOST=${SMTP_HOST:-smtp.example.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_ENCRYPTION=${SMTP_ENCRYPTION:-tls}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
     networks:
       - webnet
 
-  # 2. The ISOLATED container for testing the email token (OAuth2 version)
+  # 2. The ISOLATED container for testing the email token (OAuth2 version).
+  #     Only relevant when auth_type=oauth2. If you switch to auth_type=password,
+  #     this service can be disabled without affecting the live app.
   token-checker:
     image: alpine:latest
     container_name: form-email-token-checker

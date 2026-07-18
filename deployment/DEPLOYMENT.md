@@ -22,13 +22,38 @@ The stack consists of two services:
 
 ### Required Environment Variables
 
+The `mailer_options.auth_type` setting in `config.php` selects the active mailer
+strategy: `password` (SMTP/Basic Auth) or `oauth2` (Google XOAUTH2). Provide the
+environment variables that correspond to the chosen strategy.
+
+#### Common (always required)
+
 | Variable Name | Description | Example / Format |
 | :--- | :--- | :--- |
 | `MAKE_WEBHOOK_URL` | The URL provided by your Make.com Webhook trigger. | `https://hook.eu1.make.com/...` |
 | `MAKE_API_KEY` | Your Make.com authentication header key. | `VUzRWb8yWw-JFTc` |
+
+#### Required when `auth_type=oauth2` (Google XOAUTH2)
+
+| Variable Name | Description | Example / Format |
+| :--- | :--- | :--- |
 | `OAUTH_CLIENT_ID` | Google OAuth2 Client ID. | `...apps.googleusercontent.com` |
 | `OAUTH_CLIENT_SECRET` | Google OAuth2 Client Secret. | `GOCSPX-...` |
 | `OAUTH_REFRESH_TOKEN` | Google OAuth2 Refresh Token. | `1//03a6...` |
+
+#### Required when `auth_type=password` (SMTP/Basic Auth)
+
+| Variable Name | Description | Example / Format |
+| :--- | :--- | :--- |
+| `SMTP_PASSWORD` | SMTP password for the configured username. | `your-smtp-password` |
+| `SMTP_HOST` | SMTP server hostname (optional, has sample default). | `smtp.example.com` |
+| `SMTP_PORT` | SMTP server port (optional, defaults to `587`). | `587` |
+| `SMTP_ENCRYPTION` | Encryption mode: `tls` or `ssl` (optional, defaults to `tls`). | `tls` |
+| `SMTP_USERNAME` | SMTP username (optional, falls back to config.php). | `contact@example.com` |
+
+> **Note:** When switching from `oauth2` to `password`, the `token-checker`
+> sidecar container no longer serves a purpose and can be disabled in the stack
+> without affecting the live `app` container.
 
 7. Toggle **Enable relative path volumes** (if applicable to your Portainer setup) to ensure the volume binds work correctly.
 8. Click **Deploy the stack**.

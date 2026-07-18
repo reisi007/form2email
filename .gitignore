@@ -121,3 +121,4 @@ config.php
 repomix-form2email.md
 vendor/
 composer.lock
+.phpunit.cache/

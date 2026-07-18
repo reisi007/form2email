@@ -3,6 +3,10 @@
 define('ACCESS', true);
 ini_set('display_errors', '0');
 
+// Include Composer autoloader (loads shared helpers in src/functions.php and
+// the PHPMailer/OAuth dependencies used by the mailer dispatcher).
+require_once __DIR__ . '/vendor/autoload.php';
+
 // Include configuration and mailer
 $config = include('config.php');
 require_once('mailer.php'); // Include the mailer dispatcher
@@ -21,53 +25,6 @@ if ($isAllowedOrigin) {
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
-}
-
-/**
- * Checks if all provided fields are in a whitelist (case-insensitive).
- *
- * @param array $fields The array of fields to check (e.g., $_POST).
- * @param array $whitelist The array of allowed field names.
- * @return bool True if all fields are whitelisted, false otherwise.
- */
-function areFieldsWhitelisted(array $fields, array $whitelist): bool
-{
-    $lowercaseWhitelist = array_map('strtolower', $whitelist);
-    foreach (array_keys($fields) as $field) {
-        if (!in_array(strtolower($field), $lowercaseWhitelist)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-/**
- * Safely extracts and normalizes the origin from a given URL to prevent open redirect vulnerabilities.
- * It strictly filters against protocol-relative paths and malformed slash combinations.
- *
- * @param string $url The URL to parse and validate.
- * @return string The normalized origin (scheme://host[:port]) or an empty string if invalid.
- */
-function getOriginFromUrl(string $url): string
-{
-    // Block protocol-relative URLs (e.g., //attacker.com) and backslashes to prevent parser bypasses
-    if (str_starts_with($url, '//') || str_contains($url, '\\')) {
-        return '';
-    }
-
-    $parsed = parse_url($url);
-    if (!$parsed || empty($parsed['host']) || empty($parsed['scheme'])) {
-        return '';
-    }
-
-    // Enforce web-safe protocols only
-    $scheme = strtolower($parsed['scheme']);
-    if (!in_array($scheme, ['http', 'https'], true)) {
-        return '';
-    }
-
-    $port = isset($parsed['port']) ? ':' . $parsed['port'] : '';
-    return $scheme . '://' . strtolower($parsed['host']) . $port;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

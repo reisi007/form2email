@@ -18,3 +18,14 @@ This document contains repository-specific context, architectural decisions, and
 
 ## 4. Infrastructure as Code (IaC)
 * **Single Source of Truth:** The `docker-compose.yml` file MUST be version-controlled and stored in this repository. Portainer deployments should pull this file directly from the repository. This prevents configuration drift and ensures that the repository remains the single source of truth for both application logic and infrastructure deployment.
+
+## 5. Test & Failover Discipline
+* **Automated Tests for Security-Critical Code:** All security-critical or pure helper functions (whitelist enforcement, redirect-origin validation, secret/ENV resolution, etc. — currently located in `src/functions.php`) MUST be covered by PHPUnit tests in `tests/`. New helpers in that surface area MUST ship with tests in the same change. The suite is executed via `composer test` (or `./vendor/bin/phpunit`) and MUST pass before a change is merged.
+* **Failover Validation After Mailer Changes:** Any change to `mailer_phpmailer.php`, `mailer_native.php`, `mailer.php`, or the catch/exception flow in `index.php` MUST be followed by a manual forced-failure test (e.g., temporarily set an invalid `SMTP_PASSWORD` or stop the SMTP target) to prove the Make.com webhook fires and the form-data payload is delivered. This guards against silent regressions of the failure handler (such as catching the wrong `Exception` class).
+
+## 6. Sync Workflow (Deployment)
+* **Mandatory Sync Order:** When the user requests a "sync" (deploying the current state to the live server via `./sync.sh`), the following order is REQUIRED:
+  1. **Run the tests first.** Execute `composer test` (or `./vendor/bin/phpunit`). Do not proceed if the suite is failing.
+  2. **Commit and push any open changes** before syncing. Do not sync with uncommitted/unpushed work left behind.
+  3. **Only then run the sync** (`./sync.sh`).
+  Rationale: a sync deploys to the live server; uncommitted work or broken tests must never reach production silently.
