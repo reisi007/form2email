@@ -3,21 +3,15 @@ version: '3.8'
 services:
   # 1. The live container for the web form
   app:
-    image: php:8.5-apache
+    image: ghcr.io/reisi007/php-base:8.5
     container_name: form-reisinger-pictures
     restart: unless-stopped
     volumes:
       - /home/webadmin/websites/form.reisinger.pictures:/var/www/html
     command: >
-      /bin/sh -c '
-      a2enmod rewrite;
-      echo "memory_limit = 256M" > /usr/local/etc/php/conf.d/form2email.ini;
-      echo "upload_max_filesize = 64M" >> /usr/local/etc/php/conf.d/form2email.ini;
-      echo "post_max_size = 64M" >> /usr/local/etc/php/conf.d/form2email.ini;
-      echo "max_execution_time = 120" >> /usr/local/etc/php/conf.d/form2email.ini;
-      sed -i "s/AllowOverride None/AllowOverride All/g" /etc/apache2/apache2.conf;
+      sh -c '
       chown -R www-data:www-data /var/www/html;
-      exec apache2-foreground
+      exec php-fpm
       '
     environment:
       # --- Required by the Make.com failure fallback (see AGENTS.md §3) ---
