@@ -35,9 +35,11 @@ services:
   #     Only relevant when auth_type=oauth2. If you switch to auth_type=password,
   #     this service can be disabled without affecting the live app.
   token-checker:
-    image: alpine:latest
+    image: ghcr.io/reisi007/php-base:8.5
     container_name: form-email-token-checker
     restart: unless-stopped
+    volumes:
+      - ./check-token.php:/check-token.php:ro
     environment:
       - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
       - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
@@ -45,33 +47,7 @@ services:
       - MAKE_WEBHOOK_URL=${MAKE_WEBHOOK_URL}
       - MAKE_API_KEY=${MAKE_API_KEY}
       - CHECK_INTERVAL=86400 # Every 24 hours (86400 seconds)
-    command: >
-      /bin/sh -c '
-      apk add --no-cache curl jq;
-      echo "[$$(date "+%Y-%m-%d %H:%M:%S")] OAuth2 Token Checker started. Checking every $$CHECK_INTERVAL seconds.";
-      while true; do
-        echo "[$$(date "+%Y-%m-%d %H:%M:%S")] Initiating OAuth2 token check...";
-        
-        # Perform the actual check
-        RESPONSE=$$(curl -s -X POST https://oauth2.googleapis.com/token -d "client_id=$$OAUTH_CLIENT_ID&client_secret=$$OAUTH_CLIENT_SECRET&refresh_token=$$OAUTH_REFRESH_TOKEN&grant_type=refresh_token");
-        
-        # Evaluate response and log with timestamps
-        if echo "$$RESPONSE" | grep -q "\"error\""; then
-          echo "[$$(date "+%Y-%m-%d %H:%M:%S")] ERROR: Google OAuth2 token renewal failed! Sending Make.com webhook...";
-          curl -s -X POST -H "Content-Type: application/json" -H "x-make-apikey: $$MAKE_API_KEY" -d "{\"error\":\"Automated Checker: Google OAuth2 Refresh Token for form.reisinger.pictures has expired or is invalid!\", \"formatted_message\":\"System Alert - Check Portainer Logs.\"}" "$$MAKE_WEBHOOK_URL" > /dev/null;
-        else
-          echo "[$$(date "+%Y-%m-%d %H:%M:%S")] SUCCESS: OAuth2 Token is valid and can be successfully refreshed.";
-        fi;
-        
-        # Calculate and log the next check time
-        NEXT_EPOCH=$$(($$(date +%s) + $$CHECK_INTERVAL));
-        NEXT_TIME=$$(date -d "@$$NEXT_EPOCH" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "in $$CHECK_INTERVAL seconds");
-        echo "[$$(date "+%Y-%m-%d %H:%M:%S")] Next check scheduled for: $$NEXT_TIME";
-        
-        # Wait for the next interval
-        sleep $$CHECK_INTERVAL;
-      done
-      '
+    command: php /check-token.php
     networks:
       - webnet
 
