@@ -38,8 +38,6 @@ services:
     image: ghcr.io/reisi007/php-base:8.5
     container_name: form-email-token-checker
     restart: unless-stopped
-    volumes:
-      - ./check-token.php:/check-token.php:ro
     environment:
       - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
       - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
@@ -47,7 +45,49 @@ services:
       - MAKE_WEBHOOK_URL=${MAKE_WEBHOOK_URL}
       - MAKE_API_KEY=${MAKE_API_KEY}
       - CHECK_INTERVAL=86400 # Every 24 hours (86400 seconds)
-    command: php /check-token.php
+    command: >
+      sh -c '
+      php -r "
+        while (true) {
+          echo \"[\" . date(\"Y-m-d H:i:s\") . \"] Initiating OAuth2 token check...\n\";
+
+          \$ctx = stream_context_create([\"http\" => [
+            \"method\"  => \"POST\",
+            \"header\"  => \"Content-Type: application/x-www-form-urlencoded\",
+            \"content\" => http_build_query([
+              \"client_id\"     => getenv(\"OAUTH_CLIENT_ID\"),
+              \"client_secret\" => getenv(\"OAUTH_CLIENT_SECRET\"),
+              \"refresh_token\" => getenv(\"OAUTH_REFRESH_TOKEN\"),
+              \"grant_type\"    => \"refresh_token\",
+            ]),
+          ]]);
+
+          \$res = @file_get_contents(\"https://oauth2.googleapis.com/token\", false, \$ctx);
+
+          if (\$res === false || str_contains(\$res, \"\\\"error\\\"\")) {
+            echo \"[\" . date(\"Y-m-d H:i:s\") . \"] ERROR: Token renewal failed! Sending webhook...\n\";
+
+            \$wctx = stream_context_create([\"http\" => [
+              \"method\"  => \"POST\",
+              \"header\"  => \"Content-Type: application/json\r\nx-make-apikey: \" . getenv(\"MAKE_API_KEY\"),
+              \"content\" => json_encode([
+                \"error\"             => \"Automated Checker: OAuth2 Refresh Token for form.reisinger.pictures has expired or is invalid!\",
+                \"formatted_message\" => \"System Alert - Check Portainer Logs.\",
+              ]),
+            ]]);
+
+            @file_get_contents(getenv(\"MAKE_WEBHOOK_URL\"), false, \$wctx);
+          } else {
+            echo \"[\" . date(\"Y-m-d H:i:s\") . \"] SUCCESS: Token is valid.\n\";
+          }
+
+          \$next = date(\"Y-m-d H:i:s\", time() + (int) getenv(\"CHECK_INTERVAL\"));
+          echo \"[\" . date(\"Y-m-d H:i:s\") . \"] Next check: \$next\n\";
+
+          sleep((int) getenv(\"CHECK_INTERVAL\"));
+        }
+      "
+      '
     networks:
       - webnet
 
